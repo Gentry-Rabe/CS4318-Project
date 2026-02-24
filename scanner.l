@@ -51,10 +51,34 @@ yylineno = 1;
  /* rules */
 
  /* Keywords */
- /* TODO: Support all keywords in mC */
+"if"        { return KWD_IF; }
+"else"      { return KWD_ELSE; }
+"while"     { return KWD_WHILE; }
+"int"       { return KWD_INT; }
+"string"    { return KWD_STRING; }
+"char"      { return KWD_CHAR; }
+"return"    { return KWD_RETURN; }
+"void"      { return KWD_VOID; }
 
  /* Operators */
- /* TODO: Support all operators in mC */
+"+"          { return KWD_OPER_ADD; }
+"-"          { return KWD_OPER_SUB; }
+"*"          { return KWD_OPER_MUL; }
+"/"          { return KWD_OPER_DIV; }
+"<"          { return KWD_PER_LT; }
+">"          { return KWD_OPER_GT; }
+">="          { return KWD_OPER_GTE; }
+"<="          { return KWD_OPER_LTE; }
+"=="          { return KWD_OPER_EQ; }
+"!="          { return KWD_OPER_NEQ; }
+"="          { return KWD_OPER_ASGN; }
+"@"          { return KWD_OPER_AT; }
+"++"          { return KWD_OPER_INC; }
+"--"          { return KWD_OPER_DEC; }
+"&&"          { return KWD_OPER_AND; }
+"||"          { return KWD_OPER_OR; }
+"!"          { return KWD_OPER_NOT; }
+"%"          { return KWD_OPER_MOD; }
 
  /* Identifiers */;
 {identifier}    //TODO
