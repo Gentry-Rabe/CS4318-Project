@@ -26,6 +26,8 @@ int processString();
 newline         \n
 whitespace      [ \t]+
 integer         [0-9]
+/*Inserting definition for integers with leading '0's here since they're referenced in a macro later*/
+integerlead0    0[0-9]+
 character       \'([^\\\n]|\\.)\'
 
  /* String can contain any characters between the double quotes */
@@ -81,20 +83,45 @@ yylineno = 1;
 "%"          { return KWD_OPER_MOD; }
 
  /* Identifiers */;
-{identifier}    //TODO
-{illidentifier} //TODO
+{identifier} {
+    updateCol();
+    return ID;
+}
+{illidentifier} {
+    updateCol();
+    yyerror = "Illegal identifier";
+    return ERROR;
+}
 
  /* Constants */;
-{integer}       //TODO
-{integerlead0}  //TODO: "Integers may not have leading zeros"
+{integerlead0} { //Needs to be before integer since order matters
+    updateCol();
+    yyerror = "Integers may not have leading zeros";
+    return ERROR;
+}
+{integer} {
+    updateCol();
+    return INTCONST;
+}
 {character}     //TODO
 {string}        {updateCol(); return processString();}
 {untermstring}  {updateCol(); yyerror = "Unterminated string"; return ERROR;}
 
  /* Comments */
-{comment}       //TODO
-{untermcomment} //TODO
-{multlncomment} //TODO
+{comment} {
+    updateCol();
+    /* ignore single-line comment */
+}
+{untermcomment} {
+    updateCol();
+    yyerror = "Unterminated comment";
+    return ERROR;
+}
+{multlncomment} {
+    countLines();
+    updateCol();
+    /* ignore */
+}
 
  /* Other */
 {newline}       //TODO
@@ -105,16 +132,13 @@ yylineno = 1;
 
 /* user routines */
 
-/* TODO:
-Implement this function to keep track of column numbers
-*/
-void updateCol(){
+void updateCol() {
+    yycol += yyleng;
 }
 
-/* TODO:
-Implement this function to keep track of line numbers
-*/
-void countLines(){
+void countLines() {
+    scanlineno++;
+    yycol = 1;
 }
 
 
@@ -125,5 +149,7 @@ and
 convert valid escape sequences into escaped characters
 (string[0] == '\\' and string[1] == 'n', then string[0] should be '\n')
 */
-int processString(){
+int processString()
+{
+
 }
