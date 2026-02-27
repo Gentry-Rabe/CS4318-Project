@@ -32,7 +32,6 @@ character       \'([^\\\n]|\\.)\'
 
  /* String can contain any characters between the double quotes */
  /* other than a newline or unescaped doublequotes */
-*/
 string       \"([^\\\n]|\\.)*\"
 
 
@@ -63,24 +62,24 @@ yylineno = 1;
 "void"      { return KWD_VOID; }
 
  /* Operators */
-"+"          { return KWD_OPER_ADD; }
-"-"          { return KWD_OPER_SUB; }
-"*"          { return KWD_OPER_MUL; }
-"/"          { return KWD_OPER_DIV; }
-"<"          { return KWD_PER_LT; }
-">"          { return KWD_OPER_GT; }
-">="          { return KWD_OPER_GTE; }
-"<="          { return KWD_OPER_LTE; }
-"=="          { return KWD_OPER_EQ; }
-"!="          { return KWD_OPER_NEQ; }
-"="          { return KWD_OPER_ASGN; }
-"@"          { return KWD_OPER_AT; }
-"++"          { return KWD_OPER_INC; }
-"--"          { return KWD_OPER_DEC; }
-"&&"          { return KWD_OPER_AND; }
-"||"          { return KWD_OPER_OR; }
-"!"          { return KWD_OPER_NOT; }
-"%"          { return KWD_OPER_MOD; }
+"+"   { return OPER_ADD; }
+"-"   { return OPER_SUB; }
+"*"   { return OPER_MUL; }
+"/"   { return OPER_DIV; }
+"<"   { return OPER_LT; }
+">"   { return OPER_GT; }
+">="  { return OPER_GTE; }
+"<="  { return OPER_LTE; }
+"=="  { return OPER_EQ; }
+"!="  { return OPER_NEQ; }
+"="   { return OPER_ASGN; }
+"@"   { return OPER_AT; }
+"++"  { return OPER_INC; }
+"--"  { return OPER_DEC; }
+"&&"  { return OPER_AND; }
+"||"  { return OPER_OR; }
+"!"   { return OPER_NOT; }
+"%"   { return OPER_MOD; }
 
  /* Identifiers */;
 {identifier} {
@@ -103,7 +102,24 @@ yylineno = 1;
     updateCol();
     return INTCONST;
 }
-{character}     //TODO
+{character} {
+    updateCol();
+
+    if (yytext[1] == '\\') {
+        switch (yytext[2]) {
+            case 'n':  break;
+            case 't':  break;
+            case 'r':  break;
+            case '\\': break;
+            case '\'': break;
+            default:
+                yyerror = "Illegal escape in character constant";
+                return ERROR;
+        }
+    }
+
+    return CHARCONST;
+}
 {string}        {updateCol(); return processString();}
 {untermstring}  {updateCol(); yyerror = "Unterminated string"; return ERROR;}
 
@@ -124,8 +140,12 @@ yylineno = 1;
 }
 
  /* Other */
-{newline}       //TODO
-{whitespace}    //TODO
+{newline} {
+    countLines();
+}
+{whitespace} {
+    updateCol();
+}
 .               {return ILLEGAL_TOK;}
 
 %%
@@ -141,15 +161,37 @@ void countLines() {
     yycol = 1;
 }
 
-
-/* TODO:
-Implement this function to
-check for illegal escape sequences in string literals
-and
-convert valid escape sequences into escaped characters
-(string[0] == '\\' and string[1] == 'n', then string[0] should be '\n')
-*/
 int processString()
 {
+    int i = 1;              /* skip opening quote */
+    int j = 0;              /* write position */
 
+    while (i < yyleng - 1) {   /* stop before closing quote */
+
+        if (yytext[i] == '\\') {
+
+            i++;
+
+            switch (yytext[i]) {
+                case 'n':  yytext[j++] = '\n'; break;
+                case 't':  yytext[j++] = '\t'; break;
+                case 'r':  yytext[j++] = '\r'; break;
+                case '\\': yytext[j++] = '\\'; break;
+                case '"':  yytext[j++] = '"';  break;
+
+                default:
+                    yyerror = "Illegal escape sequence in string";
+                    return ERROR;
+            }
+        }
+        else {
+            yytext[j++] = yytext[i];
+        }
+
+        i++;
+    }
+
+    yytext[j] = '\0';   /* terminate processed string */
+
+    return STRCONST;
 }
