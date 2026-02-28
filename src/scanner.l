@@ -9,16 +9,14 @@
  /* integers to track line and column numbers */
 int scancol = 1;
 int yycol = 1;
-int scanlineno = 1;
+int scanlineno = 1; // what is the point of this variable? it's included in the assigned file but we needed not use it
 
  /* char pointer to pass error messages to driver.c */
 char *yyerror;
 
- /* TODO: functions to update line and column numbers */
 void updateCol();
 void countLines();
 
- /* TODO: function to process a string literal */
 int processString();
 
 %}
@@ -26,16 +24,16 @@ int processString();
 newline         \n
 whitespace      [ \t]+
 integer         [0-9]
-/*Inserting definition for integers with leading '0's here since they're referenced in a macro later*/
+ // inserting definition for integers with leading '0's here since they're referenced in a macro later
 integerlead0    0[0-9]+
 character       \'([^\\\n]|\\.)\'
 
- /* String can contain any characters between the double quotes */
- /* other than a newline or unescaped doublequotes */
+ // string can contain any characters between the double quotes
+ // other than a newline or unescaped doublequotes
 string       \"([^\\\n]|\\.)*\"
 
 
- /* If the end quote is not found in the same line the string is unterminated */
+ // if the end quote is not found in the same line the string is unterminated
 untermstring \"([^\\\n]|\\.)*
 
 comment         \/\/.*
@@ -52,34 +50,112 @@ yylineno = 1;
  /* rules */
 
  /* Keywords */
-"if"        { return KWD_IF; }
-"else"      { return KWD_ELSE; }
-"while"     { return KWD_WHILE; }
-"int"       { return KWD_INT; }
-"string"    { return KWD_STRING; }
-"char"      { return KWD_CHAR; }
-"return"    { return KWD_RETURN; }
-"void"      { return KWD_VOID; }
+"if" { // why do these all require this style of bracket instead of the extra spaced brackets I like? infuriating.
+    updateCol();
+    return KWD_IF; 
+}
+"else" { 
+    updateCol();
+    return KWD_ELSE; 
+}
+"while" { 
+    updateCol(); 
+    return KWD_WHILE; 
+    }
+"int" { 
+    updateCol(); 
+    return KWD_INT; 
+    }
+"string" { 
+    updateCol(); 
+    return KWD_STRING; 
+    }
+"char" { 
+    updateCol(); 
+    return KWD_CHAR; 
+    }
+"return" { 
+    updateCol(); 
+    return KWD_RETURN; 
+    }
+"void" { 
+    updateCol(); 
+    return KWD_VOID; 
+    }
 
  /* Operators */
-"+"   { return OPER_ADD; }
-"-"   { return OPER_SUB; }
-"*"   { return OPER_MUL; }
-"/"   { return OPER_DIV; }
-"<"   { return OPER_LT; }
-">"   { return OPER_GT; }
-">="  { return OPER_GTE; }
-"<="  { return OPER_LTE; }
-"=="  { return OPER_EQ; }
-"!="  { return OPER_NEQ; }
-"="   { return OPER_ASGN; }
-"@"   { return OPER_AT; }
-"++"  { return OPER_INC; }
-"--"  { return OPER_DEC; }
-"&&"  { return OPER_AND; }
-"||"  { return OPER_OR; }
-"!"   { return OPER_NOT; }
-"%"   { return OPER_MOD; }
+"+"   { 
+    updateCol(); 
+    return OPER_ADD; 
+    }
+"-"   { 
+    updateCol(); 
+    return OPER_SUB; 
+    }
+"*"   { 
+    updateCol(); 
+    return OPER_MUL; 
+    }
+"/"   { 
+    updateCol(); 
+    return OPER_DIV; 
+    }
+"<"   { 
+    updateCol(); 
+    return OPER_LT; 
+    }
+">"   { 
+    updateCol(); 
+    return OPER_GT; 
+    }
+">="  { 
+    updateCol(); 
+    return OPER_GTE; 
+    }
+"<="  { 
+    updateCol(); 
+    return OPER_LTE; 
+    }
+"=="  { 
+    updateCol(); 
+    return OPER_EQ; 
+    }
+"!="  { 
+    updateCol(); 
+    return OPER_NEQ; 
+    }
+"="   { 
+    updateCol(); 
+    return OPER_ASGN; 
+    }
+"@"   { 
+    updateCol(); 
+    return OPER_AT; 
+    }
+"++"  { 
+    updateCol(); 
+    return OPER_INC; 
+    }
+"--"  { 
+    updateCol(); 
+    return OPER_DEC; 
+    }
+"&&"  { 
+    updateCol(); 
+    return OPER_AND; 
+    }
+"||"  { 
+    updateCol(); 
+    return OPER_OR; 
+    }
+"!"   { 
+    updateCol(); 
+    return OPER_NOT; 
+    }
+"%"   { 
+    updateCol(); 
+    return OPER_MOD; 
+    } // maybe we should condense these down to single lines
 
  /* Identifiers */;
 {identifier} {
@@ -93,7 +169,7 @@ yylineno = 1;
 }
 
  /* Constants */;
-{integerlead0} { //Needs to be before integer since order matters
+{integerlead0} { // needs to be before integer since order matters
     updateCol();
     yyerror = "Integers may not have leading zeros";
     return ERROR;
@@ -126,7 +202,7 @@ yylineno = 1;
  /* Comments */
 {comment} {
     updateCol();
-    /* ignore single-line comment */
+    // ignore single line comment
 }
 {untermcomment} {
     updateCol();
@@ -141,7 +217,8 @@ yylineno = 1;
 
  /* Other */
 {newline} {
-    countLines();
+    yylineno++;
+    scancol = 1;
 }
 {whitespace} {
     updateCol();
@@ -153,26 +230,29 @@ yylineno = 1;
 /* user routines */
 
 void updateCol() {
-    yycol += yyleng;
+    yycol = scancol;     // save starting column
+    scancol += yyleng;     // advance column
 }
 
 void countLines() {
-    scanlineno++;
-    yycol = 1;
+    yylineno++;
+    scancol = 1;
 }
 
 int processString()
 {
-    int i = 1;              /* skip opening quote */
-    int j = 0;              /* write position */
+    int i = 1;              // skip opening quote
+    int j = 0;              // write position
 
-    while (i < yyleng - 1) {   /* stop before closing quote */
-
-        if (yytext[i] == '\\') {
+    while (i < yyleng - 1) // stop before closing quote
+    {   
+        if (yytext[i] == '\\') 
+        {
 
             i++;
 
-            switch (yytext[i]) {
+            switch (yytext[i]) 
+            {
                 case 'n':  yytext[j++] = '\n'; break;
                 case 't':  yytext[j++] = '\t'; break;
                 case 'r':  yytext[j++] = '\r'; break;
@@ -184,14 +264,15 @@ int processString()
                     return ERROR;
             }
         }
-        else {
+        else 
+        {
             yytext[j++] = yytext[i];
         }
 
         i++;
     }
 
-    yytext[j] = '\0';   /* terminate processed string */
+    yytext[j] = '\0';   // terminate processed string
 
     return STRCONST;
 }
