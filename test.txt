@@ -1,4 +1,16 @@
-int int
-int
-int
-int int int
+// Testing legal/illegal strings, IDs, and multi-line comments
+
+printf("Illegal \string");
+printf("Legal \t \"string\"\n");
+
+/* Legal
+multi-line 
+comment
+*/
+
+/* Illegal
+multi-line
+comment
+
+legalIDName
+1llegalIDName

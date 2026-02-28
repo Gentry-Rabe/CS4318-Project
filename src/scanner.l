@@ -32,9 +32,8 @@ character       \'([^\\\n]|\\.)\'
  // other than a newline or unescaped doublequotes
 string       \"([^\\\n]|\\.)*\"
 
-
  // if the end quote is not found in the same line the string is unterminated
-untermstring \"([^\\\n]|\\.)*
+untermstring ^".*[^"]$
 
 comment         \/\/.*
 multlncomment   \/\*([^*]|\*+[^*/])*\*+\/
@@ -49,113 +48,45 @@ yylineno = 1;
 
  /* rules */
 
- /* Keywords */
-"if" { // why do these all require this style of bracket instead of the extra spaced brackets I like? infuriating.
-    updateCol();
-    return KWD_IF; 
-}
-"else" { 
-    updateCol();
-    return KWD_ELSE; 
-}
-"while" { 
-    updateCol(); 
-    return KWD_WHILE; 
-    }
-"int" { 
-    updateCol(); 
-    return KWD_INT; 
-    }
-"string" { 
-    updateCol(); 
-    return KWD_STRING; 
-    }
-"char" { 
-    updateCol(); 
-    return KWD_CHAR; 
-    }
-"return" { 
-    updateCol(); 
-    return KWD_RETURN; 
-    }
-"void" { 
-    updateCol(); 
-    return KWD_VOID; 
-    }
+ /* keywords */
+"if" { updateCol();return KWD_IF; }
+"else" { updateCol();return KWD_ELSE; }
+"while" { updateCol(); return KWD_WHILE; }
+"int" { updateCol(); return KWD_INT; }
+"string" { updateCol(); return KWD_STRING; }
+"char" { updateCol(); return KWD_CHAR; }
+"return" { updateCol(); return KWD_RETURN; }
+"void" { updateCol(); return KWD_VOID; }
 
- /* Operators */
-"+"   { 
-    updateCol(); 
-    return OPER_ADD; 
-    }
-"-"   { 
-    updateCol(); 
-    return OPER_SUB; 
-    }
-"*"   { 
-    updateCol(); 
-    return OPER_MUL; 
-    }
-"/"   { 
-    updateCol(); 
-    return OPER_DIV; 
-    }
-"<"   { 
-    updateCol(); 
-    return OPER_LT; 
-    }
-">"   { 
-    updateCol(); 
-    return OPER_GT; 
-    }
-">="  { 
-    updateCol(); 
-    return OPER_GTE; 
-    }
-"<="  { 
-    updateCol(); 
-    return OPER_LTE; 
-    }
-"=="  { 
-    updateCol(); 
-    return OPER_EQ; 
-    }
-"!="  { 
-    updateCol(); 
-    return OPER_NEQ; 
-    }
-"="   { 
-    updateCol(); 
-    return OPER_ASGN; 
-    }
-"@"   { 
-    updateCol(); 
-    return OPER_AT; 
-    }
-"++"  { 
-    updateCol(); 
-    return OPER_INC; 
-    }
-"--"  { 
-    updateCol(); 
-    return OPER_DEC; 
-    }
-"&&"  { 
-    updateCol(); 
-    return OPER_AND; 
-    }
-"||"  { 
-    updateCol(); 
-    return OPER_OR; 
-    }
-"!"   { 
-    updateCol(); 
-    return OPER_NOT; 
-    }
-"%"   { 
-    updateCol(); 
-    return OPER_MOD; 
-    } // maybe we should condense these down to single lines
+ /* operators */
+"+"   { updateCol(); return OPER_ADD; }
+"-"   { updateCol(); return OPER_SUB; }
+"*"   { updateCol(); return OPER_MUL; }
+"/"   { updateCol(); return OPER_DIV; }
+"<"   { updateCol(); return OPER_LT; }
+">"   { updateCol(); return OPER_GT; }
+">="  { updateCol(); return OPER_GTE; }
+"<="  { updateCol(); return OPER_LTE; }
+"=="  { updateCol(); return OPER_EQ; }
+"!="  { updateCol(); return OPER_NEQ; }
+"="   { updateCol(); return OPER_ASGN; }
+"@"   { updateCol(); return OPER_AT; }
+"++"  { updateCol(); return OPER_INC; }
+"--"  { updateCol(); return OPER_DEC; }
+"&&"  { updateCol(); return OPER_AND; }
+"||"  { updateCol(); return OPER_OR; }
+"!"   { updateCol(); return OPER_NOT; }
+"%"   { updateCol(); return OPER_MOD;}
+
+ /* Punctuation */
+"[" { updateCol(); return LSQ_BRKT; }
+"]" { updateCol(); return RSQ_BRKT; }
+"{" { updateCol(); return LCRLY_BRKT; }
+"}" { updateCol(); return RCRLY_BRKT; }
+"(" { updateCol(); return LPAREN; }
+")" { updateCol(); return RPAREN; }
+"," { updateCol(); return COMMA; }
+";" { updateCol(); return SEMICLN; }
 
  /* Identifiers */;
 {identifier} {
