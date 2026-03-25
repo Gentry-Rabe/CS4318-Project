@@ -64,8 +64,57 @@ char* scope = "";
   */
 %token <strval> ID
 %token <value> INTCONST
+
 /* TODO: Add the rest of the tokens below.*/
 
+%token <strval> CHARCONST  
+%token <strval> STRCONST   
+
+/* keywords */
+%token <strval> KWD_IF     
+%token <strval> KWD_ELSE   
+%token <strval> KWD_WHILE  
+%token <strval> KWD_INT    
+%token <strval> KWD_STRING 
+%token <strval> KWD_CHAR   
+%token <strval> KWD_RETURN 
+%token <strval> KWD_VOID   
+
+/* operators */
+%token <strval> OPER_ADD   
+%token <strval> OPER_SUB   
+%token <strval> OPER_MUL   
+%token <strval> OPER_DIV   
+%token <strval> OPER_LT    
+%token <strval> OPER_GT    
+%token <strval> OPER_GTE   
+%token <strval> OPER_LTE   
+%token <strval> OPER_EQ    
+%token <strval> OPER_NEQ   
+%token <strval> OPER_ASGN  
+%token <strval> OPER_AT    
+%token <strval> OPER_INC   
+%token <strval> OPER_DEC   
+%token <strval> OPER_AND   
+%token <strval> OPER_OR    
+%token <strval> OPER_NOT   
+%token <strval> OPER_MOD   
+
+/* brackets & parens */
+%token <strval> LSQ_BRKT   
+%token <strval> RSQ_BRKT   
+%token <strval> LCRLY_BRKT 
+%token <strval> RCRLY_BRKT 
+%token <strval> LPAREN     
+%token <strval> RPAREN     
+
+/* punctuation */
+%token <strval> COMMA      
+%token <strval> SEMICLN    
+
+/* other */
+%token <strval> ERROR      
+%token <strval> ILLEGAL_TOK
 
 /* TODO: Declare non-terminal symbols as of type node.
   Provided below is one example.
