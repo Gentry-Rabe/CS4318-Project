@@ -22,7 +22,7 @@ void countLines();
 
 newline         \n
 whitespace      [ \t]+
-integer         [0-9]
+integer         [0-9]+
  // inserting definition for integers with leading '0's here since they're referenced in a macro later
 integerlead0    0[0-9]+
 character       \'([^\\\n]|\\.)\'
