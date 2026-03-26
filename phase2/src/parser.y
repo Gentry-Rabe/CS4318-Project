@@ -78,6 +78,18 @@ static int resolve_function(const char *id) {
     }
     return idx;
 }
+
+static void addAllChildren(tree *parent, tree *node) {
+    if (!parent || !node) return;
+    if (node->nodeKind == parent->nodeKind) {
+        for (int i = 0; i < node->numChildren; ++i) {
+            addChild(parent, node->children[i]);
+        }
+    } else {
+        addChild(parent, node);
+    }
+}
+
 %}
 
 /* the union describes the fields available in the yylval variable */
@@ -152,21 +164,18 @@ program
       }
       ;
 
-declList        
-      : decl
+declList
+    : decl
       {
-        tree* declListNode = maketree(DECLLIST);
-        addChild(declListNode, $1);
-        $$ = declListNode;
+          $$ = maketree(DECLLIST);
+          addChild($$, $1);
       }
     | declList decl
       {
-        tree* declListNode = maketree(DECLLIST);
-        addChild(declListNode, $1);
-        addChild(declListNode, $2);
-        $$ = declListNode;
+          $$ = $1;
+          addChild($$, $2);
       }
-      ;
+    ;
 
 decl
       : varDecl
@@ -255,7 +264,7 @@ formalDeclList
       {
           $$ = maketree(FORMALDECLLIST);
           addChild($$, $1);
-          addChild($$, $3);
+          addAllChildren($$, $3);
       }
     ;
 
@@ -284,20 +293,20 @@ funBody
     : LCRLY_BRKT statementList RCRLY_BRKT
       {
           $$ = maketree(FUNBODY);
-          if ($2) addChild($$, $2);
+          addChild($$, $2);
       }
-    ;
+      ;
 
 statementList
     : /* empty */
       {
-          $$ = NULL;
+          $$ = maketree(STATEMENTLIST);
       }
     | statement statementList
       {
           $$ = maketree(STATEMENTLIST);
-          addChild($$, $1);
-          if ($2) addChild($$, $2);
+          if ($1) addChild($$, $1);
+          addAllChildren($$, $2);
       }
     ;
 
@@ -307,35 +316,17 @@ statement
           $$ = maketree(STATEMENT);
       }
     | varDecl
-      {
-          $$ = maketree(STATEMENT);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | compoundStmt
-      {
-          $$ = maketree(STATEMENT);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | assignStmt
-      {
-          $$ = maketree(STATEMENT);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | condStmt
-      {
-          $$ = maketree(STATEMENT);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | loopStmt
-      {
-          $$ = maketree(STATEMENT);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | returnStmt
-      {
-          $$ = maketree(STATEMENT);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     ;
 
 compoundStmt
@@ -355,8 +346,7 @@ assignStmt
       }
     | expression SEMICLN
       {
-          $$ = maketree(ASSIGNSTMT);
-          addChild($$, $1);
+          $$ = $1;   // don't wrap plain expression statements!!!
       }
     ;
 
@@ -423,10 +413,7 @@ var
 
 expression
     : addExpr
-      {
-          $$ = maketree(EXPRESSION);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | expression relop addExpr
       {
           $$ = maketree(EXPRESSION);
@@ -447,10 +434,7 @@ relop
 
 addExpr
     : term
-      {
-          $$ = maketree(ADDEXPR);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | addExpr addop term
       {
           $$ = maketree(ADDEXPR);
@@ -467,10 +451,7 @@ addop
 
 term
     : factor
-      {
-          $$ = maketree(TERM);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | term mulop factor
       {
           $$ = maketree(TERM);
@@ -487,28 +468,15 @@ mulop
 
 factor
     : LPAREN expression RPAREN
-      {
-          $$ = maketree(FACTOR);
-          addChild($$, $2);
-      }
+      { $$ = $2; }
     | var
-      {
-          $$ = maketree(FACTOR);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | funCallExpr
-      {
-          $$ = maketree(FACTOR);
-          addChild($$, $1);
-      }
+      { $$ = $1; }
     | INTCONST
-      {
-          $$ = maketreeWithVal(INTEGER, $1);
-      }
+      { $$ = maketreeWithVal(INTEGER, $1); }
     | CHARCONST
-      {
-        $$ = maketreeWithVal(CHAR, $1);
-      }
+      { $$ = maketreeWithVal(CHAR, $1); }
     ;
 
 funCallExpr
@@ -543,8 +511,7 @@ argList
       }
     | argList COMMA expression
       {
-          $$ = maketree(ARGLIST);
-          addChild($$, $1);
+          $$ = $1;
           addChild($$, $3);
       }
     ;
