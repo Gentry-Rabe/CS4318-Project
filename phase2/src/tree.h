@@ -12,6 +12,7 @@ struct treenode {
       int val;
       struct treenode *parent;
       struct treenode *children[MAXCHILDREN];
+      char *text;
 };
 
 /* builds sub tree with zeor children  */

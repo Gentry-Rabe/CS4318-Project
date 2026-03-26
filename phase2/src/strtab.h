@@ -42,6 +42,7 @@ int ST_insert(char *id, char *scope, int data_type, int symbol_type);
   */
 int ST_lookup(char *id, char *scope);
 
+
 /* Print the i-th symbol table entry. You may not need this function. */
 void output_entry(int i);
 

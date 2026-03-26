@@ -17,14 +17,12 @@ int main(int argc,char **argv) {
   }
   if (!yyparse()){
     printAst(ast, 0);
-    /*
     printf("\n\nSYMBOL TABLE:\n");
     for(int i=0;i<MAXIDS;++i) {
       if(strTable[i].id != NULL) {
         output_entry(i);
       }
     }
-    */
   }
   if (infile) {
     fclose(infile);
