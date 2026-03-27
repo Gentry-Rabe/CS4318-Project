@@ -10,6 +10,8 @@ const char *symbolTypeStr[3] = {"", "[]", "()"};
   */
 struct strEntry strTable[MAXIDS];
 
+// Hash function for strings, using djb2 algorithm
+// Indexes into the symbol table
 int hash(unsigned char *str) {
   unsigned long hash = 5381;
   int c;
@@ -19,6 +21,8 @@ int hash(unsigned char *str) {
   return hash % MAXIDS; // MAXIDS defined in strtab.h
 }
 
+// Helper function to duplicate strings safely
+// Ensures string is not NULL, even if the input is NULL.
 static char *dup_str(const char *s) {
   const char *src = s ? s : "";
   size_t len = strlen(src) + 1;
@@ -31,6 +35,8 @@ static char *dup_str(const char *s) {
   return out;
 }
 
+// Create a unique key for the symbol table based on scope and id
+// Allows handling symbols with same name in different scopes.
 static char *make_key(const char *scope, const char *id) {
   const char *safe_scope = scope ? scope : "";
   const char *safe_id = id ? id : "";
@@ -47,6 +53,7 @@ static char *make_key(const char *scope, const char *id) {
   return key;
 }
 
+// Insert a symbol into the symbol table, returns index or -1 on failure
 int ST_insert(char *id, char *scope, int data_type, int symbol_type){
   char *key = make_key(scope, id);
   int start = hash((unsigned char *)key);
@@ -71,6 +78,7 @@ int ST_insert(char *id, char *scope, int data_type, int symbol_type){
   return -1;
 }
 
+// Lookup a symbol in the symbol table, returns index or -1 if not found
 int ST_lookup(char *id, char *scope) {
   char *key = make_key(scope, id);
   int start = hash((unsigned char *)key);
@@ -90,6 +98,7 @@ int ST_lookup(char *id, char *scope) {
 
   return -1;
 }
+
 //Accessor function
 int ST_get_symbol_type(int idx) {
     if (idx < 0 || idx >= MAXIDS || strTable[idx].id == NULL) {
