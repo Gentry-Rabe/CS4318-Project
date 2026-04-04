@@ -13,7 +13,7 @@ typedef struct param{
 
 typedef struct strEntry{
     char* id;
-    char* scope;
+    int* scope;
     int   data_type;
     int   symbol_type;
     int   size; //Num elements if array, num params if function
@@ -41,7 +41,7 @@ table_node* current_scope = NULL; // A global variable that should point to the 
 int ST_insert(char *id, int data_type, int symbol_type, int* scope);
 
 /* The function for looking up if a symbol exists in the current_scope. Always start looking for the symbol from the node that is being pointed to by the current_scope variable*/
-symEntry* ST_lookup(char *id);
+symEntry* ST_lookup(char *id, int *scope);
 
 /* Creates a param* whenever formalDecl in the parser.y file declares a formal parameter. Please note that we are maining a separate linklist to keep track of all the formal declarations because until the function body is processed, we will not know the number of parameters in advance. Link list provides a way for the formalDecl to declare as many parameters as needed.*/
 void add_param(int data_type, int symbol_type);
