@@ -68,7 +68,7 @@ yylineno = 1;
 
  /* Identifiers */;
 {identifier}    {updateCol();
-                 yylval.strval = (char *) malloc(yyleng *sizeof(char));
+                 yylval.strval = (char *) malloc((yyleng + 1) * sizeof(char));
                  strcpy(yylval.strval, yytext);
                  return ID;}
 {illidentifier} {updateCol(); yyerrormsg = "Identifiers may not start with a digit"; return ERROR;}

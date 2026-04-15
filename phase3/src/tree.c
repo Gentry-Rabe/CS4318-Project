@@ -16,6 +16,8 @@ char *nodeNames[33] = {"program", "declList", "decl", "varDecl", "typeSpecifier"
 char *typeNames[3] = {"int", "char", "void"};
 char *ops[10] = {"+", "-", "*", "/", "<", "<=", "==", ">=", ">", "!="};
 
+tree *ast = NULL;
+
 tree *maketree(int kind) {
       tree *this = (tree *) malloc(sizeof(struct treenode));
       this->nodeKind = kind;
