@@ -46,6 +46,7 @@ static tree *make_identifier_node(int idx) {
     return maketreeWithVal(IDENTIFIER, idx);
 }
 
+// Setting / getting node attributes
 static void set_node_attrs(tree *node, int type, int sym_type) {
     if (node != NULL) {
         node->type = type;
@@ -65,6 +66,7 @@ static int is_unindexed_array_var(tree *node) {
     return node != NULL && node->nodeKind == VAR && symtype_of_node(node) == ARRAY;
 }
 
+// Used for array indexing checks
 static int is_constant_int_expr(tree *node) {
     if (node == NULL) {
         return 0;
@@ -91,6 +93,7 @@ static int is_constant_int_expr(tree *node) {
     }
 }
 
+// Return 1 if successful and set value, otherwise return 0
 static int eval_constant_int_expr(tree *node, int *value) {
     int left = 0;
     int right = 0;
@@ -147,6 +150,7 @@ static int eval_constant_int_expr(tree *node, int *value) {
     }
 }
 
+// Check if rhs can be directly compared to the left-hand side for type checking
 static int is_simple_rhs(tree *node) {
     if (node == NULL) {
         return 0;
@@ -178,6 +182,7 @@ static int arg_has_invalid_semantics(tree *arg) {
     return arg != NULL && symtype_of_node(arg) == INVALID_SYM_TYPE;
 }
 
+// Check if param matches arg in a function call
 static int param_matches_arg(const param *p, tree *arg) {
     if (p == NULL || arg == NULL) {
         return 0;
@@ -194,6 +199,7 @@ static int param_matches_arg(const param *p, tree *arg) {
     return symtype_of_node(arg) != ARRAY;
 }
 
+// Check function calls for declaration / argc / type match
 static void check_function_call(const char *id, tree *args, tree *node) {
     symEntry *entry = ST_lookup_function((char *)id);
     if (entry == NULL) {
@@ -224,6 +230,7 @@ static void check_function_call(const char *id, tree *args, tree *node) {
     set_node_attrs(node, entry->data_type, SCALAR);
 }
 
+// Check assignments for type correctness / array indexing errors
 static void check_assignment(tree *lhs, tree *rhs) {
     if (lhs == NULL || rhs == NULL) {
         return;
@@ -237,6 +244,7 @@ static void check_assignment(tree *lhs, tree *rhs) {
     }
 }
 
+// Check array indexing for simple cases, print warnings
 static void check_array_index(const char *id, tree *index_expr, tree *node) {
     symEntry *entry = ST_lookup((char *)id);
     int const_index = 0;
@@ -262,6 +270,7 @@ static void check_array_index(const char *id, tree *index_expr, tree *node) {
     set_node_attrs(node, entry->data_type, SCALAR);
 }
 
+// Check returns
 static void check_return(tree *expr) {
     if (current_function_index < 0) {
         return;
@@ -291,6 +300,7 @@ static void begin_function(const char *name, int return_type) {
     current_param_count = 0;
 }
 
+// Shift scope after finishing function
 static void end_function(void) {
     up_scope();
     current_function_index = -1;
@@ -298,6 +308,7 @@ static void end_function(void) {
     current_param_count = 0;
 }
 
+// Create binary operator nodes with two children
 static tree *make_binary_node(int kind, tree *left, tree *mid, tree *right, int result_type) {
     tree *node = maketree(kind);
     if (left != NULL) addChild(node, left);
@@ -307,6 +318,7 @@ static tree *make_binary_node(int kind, tree *left, tree *mid, tree *right, int 
     return node;
 }
 
+// Create identifier nodes for variables and functions
 static tree *make_id_expr(char *name, int idx, int kind) {
     tree *node = maketree(kind);
     tree *id = make_identifier_node(idx);
@@ -315,6 +327,7 @@ static tree *make_id_expr(char *name, int idx, int kind) {
     return node;
 }
 
+// Add all children of a node to a parent, used for declList and statementList
 static void addAllChildren(tree *parent, tree *node) {
     if (!parent || !node) return;
     if (node->nodeKind == parent->nodeKind) {
@@ -326,7 +339,7 @@ static void addAllChildren(tree *parent, tree *node) {
     }
 }
 %}
-
+// Describes available fields in yylval
 %union {
     int value;
     struct treenode *node;
@@ -362,6 +375,7 @@ static void addAllChildren(tree *parent, tree *node) {
 
 %%
 
+// DeclList production, serves as root of program AST
 program
     : declList
       {
@@ -373,6 +387,7 @@ program
       }
     ;
 
+// Root of declarations. Accumulates multiple decl nodes
 declList
     : decl
       {
@@ -386,6 +401,7 @@ declList
       }
     ;
 
+// Add nodes for variable and function declarations
 decl
     : varDecl
       {
@@ -399,6 +415,7 @@ decl
       }
     ;
 
+// Simple type specifier for int, char and void
 typeSpecifier
     : KWD_INT
       { $$ = maketreeWithVal(TYPESPEC, INT_TYPE); set_node_attrs($$, INT_TYPE, SCALAR); }
@@ -408,6 +425,7 @@ typeSpecifier
       { $$ = maketreeWithVal(TYPESPEC, VOID_TYPE); set_node_attrs($$, VOID_TYPE, SCALAR); }
     ;
 
+// On semicolon or square brackets, add variable to symbol table and create node
 varDecl
     : typeSpecifier ID SEMICLN
       {
@@ -454,6 +472,7 @@ varDecl
       }
     ;
 
+// Add function to symbol table, create node
 funDecl
     : typeSpecifier ID
       {
@@ -487,6 +506,7 @@ funDecl
       }
     ;
 
+// Left- factoring to fix reduce/reduce conflict
 optFormalDeclList
     : /* empty */
       { $$ = NULL; }
@@ -494,6 +514,7 @@ optFormalDeclList
       { $$ = $1; }
     ;
 
+// Accumulate multiple formalDecl nodes for function parameters
 formalDeclList
     : formalDecl
       {
@@ -508,6 +529,7 @@ formalDeclList
       }
     ;
 
+// Handles parameter declarations, first specifier is for simple IDs
 formalDecl
     : typeSpecifier ID
       {
@@ -553,6 +575,7 @@ formalDecl
       }
     ;
 
+// Handles body of function, anything within curly brackets
 funBody
     : LCRLY_BRKT statementList RCRLY_BRKT
       {
@@ -561,6 +584,7 @@ funBody
       }
     ;
 
+// With statement, accumulate multiple nodes into a list
 statementList
     : /* empty */
       {
@@ -574,6 +598,7 @@ statementList
       }
     ;
 
+// With statementList, handles all statements
 statement
     : SEMICLN
       {
@@ -593,6 +618,7 @@ statement
       { $$ = $1; }
     ;
 
+// Defines compound statements as statementLists within curly brackets
 compoundStmt
     : LCRLY_BRKT statementList RCRLY_BRKT
       {
@@ -601,6 +627,7 @@ compoundStmt
       }
     ;
 
+// Handles variable assignment (var = expression) and expression statements (var++, varA + varB, etc.)
 assignStmt
     : var OPER_ASGN expression SEMICLN
       {
@@ -615,6 +642,7 @@ assignStmt
       }
     ;
 
+// For one-line conditionals, with and without else statements
 condStmt
     : KWD_IF LPAREN expression RPAREN statement %prec LOWER_THAN_ELSE
       {
@@ -631,6 +659,8 @@ condStmt
       }
     ;
 
+// Creates loop upon structure: (expression) statement,
+// Keep in mind any enclosed expression followed by a statement is considered a loop
 loopStmt
     : KWD_WHILE LPAREN expression RPAREN statement
       {
@@ -640,6 +670,7 @@ loopStmt
       }
     ;
 
+// Handles return statements, with and without return value
 returnStmt
     : KWD_RETURN SEMICLN
       {
@@ -654,6 +685,7 @@ returnStmt
       }
     ;
 
+// Handles variables, checks for undeclared variables in symbol table and prints warning
 var
     : ID
       {
@@ -685,6 +717,8 @@ var
       }
     ;
 
+// Handles expressions, with and without relational operators
+// If there is a relational operator, create a node with the operator and two addExpr children
 expression
     : addExpr
       { $$ = $1; }
@@ -703,6 +737,7 @@ expression
       }
     ;
 
+// Handles relational operators
 relop
     : OPER_LTE { $$ = maketreeWithVal(RELOP, LTE); set_node_attrs($$, INT_TYPE, SCALAR); }
     | OPER_LT  { $$ = maketreeWithVal(RELOP, LT);  set_node_attrs($$, INT_TYPE, SCALAR); }
@@ -730,11 +765,14 @@ addExpr
       }
     ;
 
+// Handles addition and subtraction operators, creates node with operator value
 addop
     : OPER_ADD { $$ = maketreeWithVal(ADDOP, ADD); set_node_attrs($$, INT_TYPE, SCALAR); }
     | OPER_SUB { $$ = maketreeWithVal(ADDOP, SUB); set_node_attrs($$, INT_TYPE, SCALAR); }
     ;
 
+// Handles multiplication and division, similar to addExpr
+// Note that multiplication/division are executed before addition/subtraction
 term
     : factor
       { $$ = $1; }
@@ -753,11 +791,13 @@ term
       }
     ;
 
+// Multiplication and division operators
 mulop
     : OPER_MUL { $$ = maketreeWithVal(MULOP, MUL); set_node_attrs($$, INT_TYPE, SCALAR); }
     | OPER_DIV { $$ = maketreeWithVal(MULOP, DIV); set_node_attrs($$, INT_TYPE, SCALAR); }
     ;
 
+// Handles factorization of expressions
 factor
     : LPAREN expression RPAREN
       { $$ = $2; }
@@ -777,6 +817,8 @@ factor
       }
     ;
 
+// Handles function calls, with and without arguments
+// Checks for undeclared functions in symbol table and prints warning
 funCallExpr
     : ID LPAREN
       {
@@ -802,6 +844,8 @@ funCallExpr
       }
     ;
 
+
+// Arglist production, accumulates multiple expressions as with statementList and declList
 argList
     : expression
       {
@@ -816,11 +860,13 @@ argList
     ;
 %%
 
+// Warning function
 int yywarning(char *msg) {
     printf("warning: line %d: %s\n", yylineno, msg);
     return 0;
 }
 
+// Error function
 int yyerror(char *msg) {
     printf("error: line %d: %s\n", yylineno, msg);
     return 0;
