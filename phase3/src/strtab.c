@@ -87,6 +87,15 @@ static int lookup_index_in_scope(table_node *scope, char *id) {
     return entry ? entry_index(entry) : -1;
 }
 
+static table_node *root_scope(void) {
+    ensure_root();
+    table_node *root = current_scope;
+    while (root->parent != NULL) {
+        root = root->parent;
+    }
+    return root;
+}
+
 static symEntry *insert_into_current_scope(char *id, int data_type, int symbol_type) {
     ensure_root();
     if (!id) {
@@ -149,6 +158,15 @@ int ST_lookup_current_index(char *id) {
     return lookup_index_in_scope(current_scope, id);
 }
 
+symEntry* ST_lookup_function(char *id) {
+    table_node *root = root_scope();
+    symEntry *entry = lookup_in_scope(root, id);
+    if (entry != NULL && entry->symbol_type == FUNCTION) {
+        return entry;
+    }
+    return NULL;
+}
+
 void add_param(int data_type, int symbol_type) {
     param *node = (param *)malloc(sizeof(param));
     if (!node) {
@@ -174,10 +192,12 @@ void connect_params(int i, int num_params) {
         working_list_end = NULL;
         return;
     }
+
     if (symtab[i].params == NULL && symtab[i].size == 0) {
         symtab[i].params = working_list_head;
         symtab[i].size = num_params;
     }
+
     working_list_head = NULL;
     working_list_end = NULL;
 }

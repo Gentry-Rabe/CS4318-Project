@@ -32,9 +32,14 @@ enum opType {ADD, SUB, MUL, DIV, LT, LTE, EQ, GTE, GT, NEQ};
 static int current_function_index = -1;
 static int current_function_return_type = VOID_TYPE;
 static int current_param_count = 0;
+static int suppress_arg_semantic_errors = 0;
+
+#define INVALID_SYM_TYPE (-1)
 
 static void sem_error(const char *msg) {
-    yyerror((char *)msg);
+    if (!suppress_arg_semantic_errors) {
+        yyerror((char *)msg);
+    }
 }
 
 static tree *make_identifier_node(int idx) {
@@ -58,6 +63,88 @@ static int symtype_of_node(tree *node) {
 
 static int is_unindexed_array_var(tree *node) {
     return node != NULL && node->nodeKind == VAR && symtype_of_node(node) == ARRAY;
+}
+
+static int is_constant_int_expr(tree *node) {
+    if (node == NULL) {
+        return 0;
+    }
+    switch (node->nodeKind) {
+        case INTEGER:
+            return 1;
+        case ADDEXPR:
+            if (node->numChildren == 3 && node->children[1] != NULL &&
+                node->children[1]->nodeKind == ADDOP) {
+                return is_constant_int_expr(node->children[0]) &&
+                       is_constant_int_expr(node->children[2]);
+            }
+            return 0;
+        case TERM:
+            if (node->numChildren == 3 && node->children[1] != NULL &&
+                node->children[1]->nodeKind == MULOP) {
+                return is_constant_int_expr(node->children[0]) &&
+                       is_constant_int_expr(node->children[2]);
+            }
+            return 0;
+        default:
+            return 0;
+    }
+}
+
+static int eval_constant_int_expr(tree *node, int *value) {
+    int left = 0;
+    int right = 0;
+
+    if (node == NULL || value == NULL) {
+        return 0;
+    }
+
+    switch (node->nodeKind) {
+        case INTEGER:
+            *value = node->val;
+            return 1;
+        case ADDEXPR:
+            if (node->numChildren != 3 || node->children[1] == NULL ||
+                node->children[1]->nodeKind != ADDOP) {
+                return 0;
+            }
+            if (!eval_constant_int_expr(node->children[0], &left) ||
+                !eval_constant_int_expr(node->children[2], &right)) {
+                return 0;
+            }
+            if (node->children[1]->val == ADD) {
+                *value = left + right;
+                return 1;
+            }
+            if (node->children[1]->val == SUB) {
+                *value = left - right;
+                return 1;
+            }
+            return 0;
+        case TERM:
+            if (node->numChildren != 3 || node->children[1] == NULL ||
+                node->children[1]->nodeKind != MULOP) {
+                return 0;
+            }
+            if (!eval_constant_int_expr(node->children[0], &left) ||
+                !eval_constant_int_expr(node->children[2], &right)) {
+                return 0;
+            }
+            if (node->children[1]->val == MUL) {
+                *value = left * right;
+                return 1;
+            }
+            if (node->children[1]->val == DIV) {
+                if (right == 0) {
+                    return 0;
+                }
+                *value = left / right;
+                return 1;
+            }
+            return 0;
+        default:
+            return 0;
+    }
 }
 
 static int is_simple_rhs(tree *node) {
@@ -87,9 +174,16 @@ static tree *arg_list_child(tree *args, int i) {
     return args->children[i];
 }
 
+static int arg_has_invalid_semantics(tree *arg) {
+    return arg != NULL && symtype_of_node(arg) == INVALID_SYM_TYPE;
+}
+
 static int param_matches_arg(const param *p, tree *arg) {
     if (p == NULL || arg == NULL) {
         return 0;
+    }
+    if (arg_has_invalid_semantics(arg)) {
+        return 1;
     }
     if (p->data_type != type_of_node(arg)) {
         return 0;
@@ -101,22 +195,24 @@ static int param_matches_arg(const param *p, tree *arg) {
 }
 
 static void check_function_call(const char *id, tree *args, tree *node) {
-    symEntry *entry = ST_lookup((char *)id);
-    if (entry == NULL || entry->symbol_type != FUNCTION) {
-        sem_error("undeclared symbol");
+    symEntry *entry = ST_lookup_function((char *)id);
+    if (entry == NULL) {
+        sem_error("Undefined function");
         set_node_attrs(node, VOID_TYPE, SCALAR);
         return;
     }
 
     int actual_count = arg_list_count(args);
     int expected_count = entry->size;
-    if (actual_count != expected_count) {
-        sem_error("function call mismatch");
+    if (actual_count < expected_count) {
+        sem_error("Too few arguments provided in function call.");
+    } else if (actual_count > expected_count) {
+        sem_error("Too many arguments provided in function call.");
     } else {
         param *p = entry->params;
         for (int i = 0; i < actual_count; ++i) {
             if (!param_matches_arg(p, arg_list_child(args, i))) {
-                sem_error("function call mismatch");
+                sem_error("Argument type mismatch in function call.");
                 break;
             }
             if (p != NULL) {
@@ -143,20 +239,24 @@ static void check_assignment(tree *lhs, tree *rhs) {
 
 static void check_array_index(const char *id, tree *index_expr, tree *node) {
     symEntry *entry = ST_lookup((char *)id);
+    int const_index = 0;
+
     if (entry == NULL) {
-        sem_error("undeclared symbol");
+        sem_error("Undeclared variable");
         set_node_attrs(node, VOID_TYPE, SCALAR);
         return;
     }
     if (entry->symbol_type != ARRAY) {
-        sem_error("array indexing error");
+        sem_error("Non-array identifier used as an array.");
     }
     if (type_of_node(index_expr) != INT_TYPE) {
-        sem_error("array indexing error");
+        sem_error("Array indexed using non-integer expression.");
     }
-    if (index_expr != NULL && index_expr->nodeKind == INTEGER && entry->size > 0) {
-        if (index_expr->val < 0 || index_expr->val >= entry->size) {
-            sem_error("array indexing error");
+    if (entry->symbol_type == ARRAY && entry->size > 0 &&
+        is_constant_int_expr(index_expr) &&
+        eval_constant_int_expr(index_expr, &const_index)) {
+        if (const_index < 0 || const_index >= entry->size) {
+            sem_error("Statically sized array indexed with constant, out-of-bounds expression.");
         }
     }
     set_node_attrs(node, entry->data_type, SCALAR);
@@ -342,6 +442,9 @@ varDecl
           addChild($$, make_identifier_node(idx));
           addChild($$, maketreeWithVal(INTEGER, $4));
           set_node_attrs($$, $1->val, ARRAY);
+          if ($4 == 0) {
+              sem_error("Array variable declared with size of zero.");
+          }
           if (existing == -1) {
               symEntry *entry = ST_lookup($2);
               if (entry != NULL) {
@@ -559,8 +662,8 @@ var
           $$ = maketree(VAR);
           addChild($$, make_identifier_node(idx));
           if (entry == NULL || entry->symbol_type == FUNCTION) {
-              sem_error("undeclared symbol");
-              set_node_attrs($$, VOID_TYPE, SCALAR);
+              sem_error("Undeclared variable");
+              set_node_attrs($$, VOID_TYPE, INVALID_SYM_TYPE);
           } else {
               set_node_attrs($$, entry->data_type, entry->symbol_type);
           }
@@ -573,8 +676,8 @@ var
           addChild($$, make_identifier_node(idx));
           addChild($$, $3);
           if (entry == NULL) {
-              sem_error("undeclared symbol");
-              set_node_attrs($$, VOID_TYPE, SCALAR);
+              sem_error("Undeclared variable");
+              set_node_attrs($$, VOID_TYPE, INVALID_SYM_TYPE);
           } else {
               check_array_index($1, $3, $$);
               addAllChildren($$, NULL);
@@ -675,19 +778,24 @@ factor
     ;
 
 funCallExpr
-    : ID LPAREN argList RPAREN
+    : ID LPAREN
       {
-          symEntry *entry = ST_lookup($1);
-          int idx = (entry != NULL && entry->symbol_type == FUNCTION) ? ST_lookup_index($1) : -1;
+          suppress_arg_semantic_errors++;
+      }
+      argList RPAREN
+      {
+          suppress_arg_semantic_errors--;
+          symEntry *entry = ST_lookup_function($1);
+          int idx = (entry != NULL) ? ST_lookup_index($1) : -1;
           $$ = maketree(FUNCCALLEXPR);
           addChild($$, make_identifier_node(idx));
-          if ($3 != NULL) addChild($$, $3);
-          check_function_call($1, $3, $$);
+          if ($4 != NULL) addChild($$, $4);
+          check_function_call($1, $4, $$);
       }
     | ID LPAREN RPAREN
       {
-          symEntry *entry = ST_lookup($1);
-          int idx = (entry != NULL && entry->symbol_type == FUNCTION) ? ST_lookup_index($1) : -1;
+          symEntry *entry = ST_lookup_function($1);
+          int idx = (entry != NULL) ? ST_lookup_index($1) : -1;
           $$ = maketree(FUNCCALLEXPR);
           addChild($$, make_identifier_node(idx));
           check_function_call($1, NULL, $$);

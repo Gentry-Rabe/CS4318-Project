@@ -38,6 +38,7 @@ int ST_insert(char *id, int data_type, int symbol_type, int* scope);
 symEntry* ST_lookup(char *id);
 int ST_lookup_index(char *id);
 int ST_lookup_current_index(char *id);
+symEntry* ST_lookup_function(char *id);
 void add_param(int data_type, int symbol_type);
 void connect_params(int i, int num_params);
 void set_current_function_name(const char *name);
