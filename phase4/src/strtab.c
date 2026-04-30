@@ -14,8 +14,6 @@ static symEntry symtab[MAXIDS];
 static int symtab_count = 0;
 static char current_function_name[256] = "";
 
-// Helper function to duplicate strings safely
-// Ensures string is not NULL, even if the input is NULL.
 static char *dup_str(const char *s) {
     const char *src = s ? s : "";
     size_t len = strlen(src) + 1;
@@ -28,8 +26,6 @@ static char *dup_str(const char *s) {
     return out;
 }
 
-// Hash function for strings, using djb2 algorithm
-// Indexes into the symbol table
 static int hash(unsigned char *str) {
     unsigned long h = 5381;
     int c;
@@ -39,7 +35,6 @@ static int hash(unsigned char *str) {
     return (int)(h % MAXIDS);
 }
 
-// Checks if current scope is initialized
 static void ensure_root(void) {
     if (current_scope != NULL) {
         return;
@@ -69,7 +64,6 @@ void set_current_function_name(const char *name) {
     snprintf(current_function_name, sizeof(current_function_name), "%s", name ? name : "");
 }
 
-// Checks current scope and parent scopes for symbol
 static symEntry *lookup_in_scope(table_node *scope, char *id) {
     if (!scope || !id) {
         return NULL;
@@ -93,7 +87,6 @@ static int lookup_index_in_scope(table_node *scope, char *id) {
     return entry ? entry_index(entry) : -1;
 }
 
-// Finds root scope
 static table_node *root_scope(void) {
     ensure_root();
     table_node *root = current_scope;
@@ -103,7 +96,6 @@ static table_node *root_scope(void) {
     return root;
 }
 
-// Inserts symbol into symbol table
 static symEntry *insert_into_current_scope(char *id, int data_type, int symbol_type) {
     ensure_root();
     if (!id) {
@@ -139,14 +131,12 @@ static symEntry *insert_into_current_scope(char *id, int data_type, int symbol_t
     return NULL;
 }
 
-// Inserts a symbol into the symbol table, returns index or -1 on failure
 int ST_insert(char *id, int data_type, int symbol_type, int* scope) {
     (void)scope;
     symEntry *entry = insert_into_current_scope(id, data_type, symbol_type);
     return entry ? entry_index(entry) : -1;
 }
 
-// Looks up a symbol in the symbol table, returns index or -1 if not found
 symEntry* ST_lookup(char *id) {
     ensure_root();
     for (table_node *scope = current_scope; scope != NULL; scope = scope->parent) {
@@ -158,19 +148,16 @@ symEntry* ST_lookup(char *id) {
     return NULL;
 }
 
-// Looks up index in symbol table
 int ST_lookup_index(char *id) {
     symEntry *entry = ST_lookup(id);
     return entry ? entry_index(entry) : -1;
 }
 
-// Checks root then returns index
 int ST_lookup_current_index(char *id) {
     ensure_root();
     return lookup_index_in_scope(current_scope, id);
 }
 
-// Lookup
 symEntry* ST_lookup_function(char *id) {
     table_node *root = root_scope();
     symEntry *entry = lookup_in_scope(root, id);
@@ -180,7 +167,6 @@ symEntry* ST_lookup_function(char *id) {
     return NULL;
 }
 
-// Adds parameter to current function
 void add_param(int data_type, int symbol_type) {
     param *node = (param *)malloc(sizeof(param));
     if (!node) {
@@ -200,7 +186,6 @@ void add_param(int data_type, int symbol_type) {
     }
 }
 
-// Connects current working list of parameters to function entry at i
 void connect_params(int i, int num_params) {
     if (i < 0 || i >= symtab_count) {
         working_list_head = NULL;
@@ -217,7 +202,6 @@ void connect_params(int i, int num_params) {
     working_list_end = NULL;
 }
 
-// Creates a new scope as a child of the current scope
 void new_scope(void) {
     ensure_root();
     table_node *child = (table_node *)calloc(1, sizeof(table_node));
@@ -238,7 +222,6 @@ void new_scope(void) {
     current_scope = child;
 }
 
-// Shifts current scope back to parent, otherwise stays at root
 void up_scope(void) {
     ensure_root();
     if (current_scope->parent != NULL) {
@@ -256,7 +239,6 @@ char *get_symbol_id(int idx) {
     return symtab[idx].id;
 }
 
-// Prints a single entry in the symbol table
 void output_entry(int i) {
     if (i < 0 || i >= symtab_count || symtab[i].id == NULL) {
         return;
@@ -265,7 +247,6 @@ void output_entry(int i) {
     printf("%s:%s%s\n", symtab[i].scope, symtab[i].id, symbolTypeStr[symtab[i].symbol_type]);
 }
 
-// Recursively prints a scope and its children
 static void print_scope(table_node *scope) {
     if (scope == NULL) {
         return;
@@ -282,7 +263,6 @@ static void print_scope(table_node *scope) {
     }
 }
 
-// Loops through all scopes and print entries
 void print_sym_tab(void) {
     ensure_root();
     table_node *root = current_scope;
@@ -290,4 +270,16 @@ void print_sym_tab(void) {
         root = root->parent;
     }
     print_scope(root);
+}
+
+
+symEntry *ST_get_entry(int idx) {
+    if (idx < 0 || idx >= symtab_count) {
+        return NULL;
+    }
+    return &symtab[idx];
+}
+
+int ST_get_count(void) {
+    return symtab_count;
 }

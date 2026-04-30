@@ -45,6 +45,8 @@ void set_current_function_name(const char *name);
 void new_scope(void);
 void up_scope(void);
 char *get_symbol_id(int idx);
+symEntry *ST_get_entry(int idx);
+int ST_get_count(void);
 void print_sym_tab(void);
 
 #endif

@@ -1,4 +1,3 @@
-
 /* definitions */
 
 %{
@@ -38,6 +37,7 @@ yylineno = 1;
 "if"            {updateCol(); return KWD_IF;}
 "else"          {updateCol(); return KWD_ELSE;}
 "while"         {updateCol(); return KWD_WHILE;}
+"for"           {updateCol(); return KWD_FOR;}
 "int"           {updateCol(); return KWD_INT;}
 "char"          {updateCol(); return KWD_CHAR;}
 "return"        {updateCol(); return KWD_RETURN;}
@@ -104,7 +104,6 @@ void countLines(){
     }
 }
 int processChar(){
-    // yytext[0] will be "'", so check yytext[1] for escap
     if (yytext[1] == '\\'){
         if (yytext[2] == '\''){
             yylval.value = '\'';
@@ -124,7 +123,6 @@ int processChar(){
         }
     }
     else{
-        // If the character isn't escaped, add it to our temp string.
         yylval.value = yytext[1];
     }
     return CHARCONST;
