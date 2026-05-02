@@ -19,9 +19,11 @@ static void printhelp(void){
 int main(int argc, char *argv[]) {
     int p_ast = 0;
     int p_symtab = 0;
+    
     const char *outfile = NULL;
     const char *infile = NULL;
 
+    // Skip first arg (program name), then check all but last for options.
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             printhelp();
@@ -55,6 +57,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    // Parse input file and optionally print AST and symbol table
     if (!yyparse()) {
         if (p_ast) {
             printAst(ast, 1);

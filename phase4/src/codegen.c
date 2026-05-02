@@ -71,6 +71,7 @@ static symEntry *entry_from_var_node(tree *node) {
     return entry_from_id_node(node->children[0]);
 }
 
+// Finds local variable or parameter in current function context and returns its index
 static int find_local_binding(function_ctx *ctx, int sym_index) {
     if (ctx == NULL) {
         return -1;
@@ -83,6 +84,7 @@ static int find_local_binding(function_ctx *ctx, int sym_index) {
     return -1;
 }
 
+// Adds a local variable or parameter to function context and assigns it a stack slot
 static int add_local_binding(function_ctx *ctx, int sym_index, int words, int is_param, int is_array_param) {
     if (ctx == NULL || sym_index < 0) {
         return -1;
@@ -110,6 +112,7 @@ static int align16(int n) {
     return (n + 15) & ~15;
 }
 
+// Recursively collect local variable declarations in function body and assign stack slots
 static void collect_var_decls(tree *node, function_ctx *ctx) {
     if (node == NULL || ctx == NULL) {
         return;
@@ -135,10 +138,12 @@ static void collect_var_decls(tree *node, function_ctx *ctx) {
     }
 }
 
+// Collects formal parameters into function context and assigns stack slots
 static void collect_formals(tree *formal_list, function_ctx *ctx) {
     if (formal_list == NULL || ctx == NULL) {
         return;
     }
+    // First 6 parameters go in registers, rest go on stack
     for (int i = 0; i < formal_list->numChildren; ++i) {
         tree *formal = formal_list->children[i];
         if (formal == NULL || formal->nodeKind != FORMALDECL || formal->numChildren < 2) {
@@ -150,6 +155,7 @@ static void collect_formals(tree *formal_list, function_ctx *ctx) {
     }
 }
 
+// Function prologue
 static void emit_function_prologue(function_ctx *ctx, tree *formal_list) {
     static const char *arg_regs[6] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     fprintf(out, ".globl %s\n", ctx->name);
@@ -164,6 +170,7 @@ static void emit_function_prologue(function_ctx *ctx, tree *formal_list) {
         return;
     }
 
+    // Move arguments from registers/stack into their assigned stack slots
     int arg_index = 0;
     for (int i = 0; i < formal_list->numChildren; ++i) {
         tree *formal = formal_list->children[i];
@@ -186,12 +193,14 @@ static void emit_function_prologue(function_ctx *ctx, tree *formal_list) {
     }
 }
 
+// Function epilogue with label for return statements to jump to
 static void emit_function_epilogue(function_ctx *ctx) {
     fprintf(out, ".Lfunc_end_%d:\n", ctx->end_label);
     fprintf(out, "    leave\n");
     fprintf(out, "    ret\n\n");
 }
 
+// Generates code for global variable declaration
 static void emit_global_decl(tree *node) {
     if (node == NULL || node->nodeKind != VARDECL || node->numChildren < 2) {
         return;
@@ -218,6 +227,8 @@ static void pop_rcx_rax(void) {
     fprintf(out, "    popq %%rax\n");
 }
 
+// Generates code to compare two values in rax and rcx
+// Set rax to 1 if condition is true and 0 otherwise
 static void emit_compare_set(int relop_val) {
     fprintf(out, "    cmpq %%rcx, %%rax\n");
     switch (relop_val) {
@@ -233,6 +244,7 @@ static void emit_compare_set(int relop_val) {
     push_rax();
 }
 
+// Generates code to load value of var/array element and push it on stack
 static void emit_load_symbol_value(int sym_index) {
     symEntry *entry = ST_get_entry(sym_index);
     if (entry == NULL) {
@@ -258,6 +270,7 @@ static void emit_load_symbol_value(int sym_index) {
     push_rax();
 }
 
+// Generates code to compute address of var/array element and push it on stack
 static void gen_lvalue_address(tree *node) {
     if (node == NULL || node->numChildren == 0) {
         fprintf(out, "    movq $0, %%rax\n");
@@ -269,6 +282,7 @@ static void gen_lvalue_address(tree *node) {
     symEntry *entry = entry_from_id_node(id);
     int binding = (current_function != NULL) ? find_local_binding(current_function, id->val) : -1;
 
+    // For simple variable access just compute address. For array access compute address of first element and add offset computed from index expression
     if (node->nodeKind == VAR) {
         if (binding >= 0) {
             fprintf(out, "    leaq %d(%%rbp), %%rax\n", current_function->locals[binding].offset);
@@ -286,6 +300,7 @@ static void gen_lvalue_address(tree *node) {
     fprintf(out, "    popq %%rcx\n");
     fprintf(out, "    imulq $8, %%rcx\n");
 
+    // For array parameters load the pointer and add the offset, for local arrays compute address of first element and add offset
     if (binding >= 0) {
         if (current_function->locals[binding].is_array_param) {
             fprintf(out, "    movq %d(%%rbp), %%rax\n", current_function->locals[binding].offset);
@@ -303,6 +318,7 @@ static void gen_lvalue_address(tree *node) {
     push_rax();
 }
 
+// Generates code to store value from top of stack into var
 static void emit_store_to_var(tree *node) {
     gen_lvalue_address(node);
     fprintf(out, "    popq %%rcx\n");
@@ -311,6 +327,7 @@ static void emit_store_to_var(tree *node) {
     push_rax();
 }
 
+// Generates code for function call expr
 static void gen_call(tree *node) {
     static const char *arg_regs[6] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     if (node == NULL || node->numChildren == 0) {
@@ -319,6 +336,7 @@ static void gen_call(tree *node) {
         return;
     }
 
+    // Evaluate arguments and push them on stack. First 6 arguments will be popped into registers, rest will remain on stack for callee to access
     symEntry *entry = entry_from_id_node(node->children[0]);
     tree *args = (node->numChildren >= 2) ? node->children[1] : NULL;
     int argc = (args != NULL) ? args->numChildren : 0;
@@ -352,6 +370,7 @@ static void gen_call(tree *node) {
     push_rax();
 }
 
+// Generates code for expression node
 static void gen_expr(tree *node) {
     if (node == NULL) {
         fprintf(out, "    movq $0, %%rax\n");
@@ -431,6 +450,7 @@ static void gen_expr(tree *node) {
     }
 }
 
+// Generates code for assignment statement
 static void gen_assignment(tree *node, int leave_value_on_stack) {
     if (node == NULL || node->numChildren < 2) {
         return;
@@ -442,6 +462,7 @@ static void gen_assignment(tree *node, int leave_value_on_stack) {
     }
 }
 
+// Handles if-else statements
 static void gen_cond(tree *node) {
     int l_else = new_label();
     int l_end = new_label();
@@ -460,6 +481,7 @@ static void gen_cond(tree *node) {
     fprintf(out, ".L%d:\n", l_end);
 }
 
+// Handles while and for loops
 static void gen_loop(tree *node) {
     int l_test = new_label();
     int l_body = new_label();
@@ -499,6 +521,7 @@ static void gen_loop(tree *node) {
     fprintf(out, ".L%d:\n", l_end);
 }
 
+// Generates code for statement node
 static void gen_statement(tree *node) {
     if (node == NULL) {
         return;
@@ -554,6 +577,7 @@ static void gen_statement(tree *node) {
     }
 }
 
+// Generates code for list of statements
 static void gen_statement_list(tree *node) {
     if (node == NULL) {
         return;
@@ -563,6 +587,7 @@ static void gen_statement_list(tree *node) {
     }
 }
 
+// Generates code for function decl
 static void gen_function(tree *node) {
     if (node == NULL || node->nodeKind != FUNDECL || node->numChildren < 2) {
         return;
@@ -575,6 +600,7 @@ static void gen_function(tree *node) {
         return;
     }
 
+    // Initialize function context and collect info about parameters and local variables
     function_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
     ctx.func_sym_index = id->val;
@@ -584,6 +610,7 @@ static void gen_function(tree *node) {
 
     tree *formal_list = NULL;
     tree *body = NULL;
+    // FUNBODY can have either 2 children (formal_list, body) or just 1 child (body) if no parameters
     if (node->numChildren == 3) {
         formal_list = node->children[1];
         body = node->children[2];
@@ -605,6 +632,7 @@ static void gen_function(tree *node) {
     current_function = NULL;
 }
 
+// Handles global var decls and function decl
 static void gen_decl(tree *node) {
     if (node == NULL) {
         return;
@@ -626,11 +654,13 @@ static void gen_decl(tree *node) {
     }
 }
 
+// Handles global var decls and function decls. Local var decls are handled during function codegen.
 static void gen_program(tree *node) {
     if (node == NULL) {
         return;
     }
     fprintf(out, ".text\n");
+    // First emit global variable declarations so they appear before functions in assembly output
     if (node->nodeKind == PROGRAM && node->numChildren > 0) {
         tree *decls = node->children[0];
         if (decls != NULL) {
@@ -651,6 +681,7 @@ static void gen_program(tree *node) {
     }
 }
 
+// Entry point for code gen
 void codegen(FILE *target, tree *root) {
     if (target == NULL || root == NULL) {
         return;

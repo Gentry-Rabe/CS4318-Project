@@ -104,6 +104,7 @@ void countLines(){
     }
 }
 int processChar(){
+    // yytext[0] will be "'", so check yytext[1] for escap
     if (yytext[1] == '\\'){
         if (yytext[2] == '\''){
             yylval.value = '\'';
@@ -123,6 +124,7 @@ int processChar(){
         }
     }
     else{
+        // If the character isn't escaped, add it to our temp string.
         yylval.value = yytext[1];
     }
     return CHARCONST;
